@@ -3,7 +3,7 @@
 #include <HardwareSerial.h>
 
 #include <string.h>
-#include <stdio.h>
+
 #define RXPin (22)
 #define TXPin (21)
 static const uint32_t GPSBaud = 9600;
