@@ -202,6 +202,7 @@
                 "/home/iknowss/.arduino15/packages/esp32/hardware/esp32/2.0.3/tools/sdk/esp32/qspi_qspi/include",
                 "/home/iknowss/.arduino15/packages/esp32/hardware/esp32/2.0.3/cores/esp32",
                 "/home/iknowss/.arduino15/packages/esp32/hardware/esp32/2.0.3/variants/esp32",
+                "/home/iknowss/Arduino/libraries/TinyGPSPlus-master/src",
                 "/home/iknowss/.arduino15/packages/esp32/hardware/esp32/2.0.3/libraries/Wire/src",
                 "/home/iknowss/Arduino/libraries/TinyGSM-master/src",
                 "/home/iknowss/Arduino/libraries/pubsubclient-master/src",

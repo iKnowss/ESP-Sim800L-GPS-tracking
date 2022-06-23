@@ -1,7 +1,7 @@
 //////////////////////////////////////gps
 #include <TinyGPS++.h>
 #include <HardwareSerial.h>
-#include <ArduinoJson.h>
+
 #include <string.h>
 #include <stdio.h>
 #define RXPin (22)
@@ -72,11 +72,6 @@ PubSubClient mqtt(client);
 #define I2C_SDA              21
 #define I2C_SCL              22
 
-
-
-#define OUTPUT_1             2
-#define OUTPUT_2             15
-
 uint32_t lastReconnectAttempt = 0;
 TwoWire I2CPower = TwoWire(0);  
 
@@ -84,8 +79,6 @@ TwoWire I2CPower = TwoWire(0);
 #define IP5306_ADDR          0x75
 #define IP5306_REG_SYS_CTL0  0x00
 
-float temperature = 0;
-float humidity = 0;
 long lastMsg = 0;
 
 bool setPowerBoostKeepOn(int en){
@@ -115,27 +108,17 @@ void mqttCallback(char* topic, byte* message, unsigned int len) {
 
   // If a message is received on the topic esp/output1, you check if the message is either "true" or "false". 
   // Changes the output state according to the message
-  if (String(topic) == "gps_id|lat|lng") {
+  if (String(topic) == "gpstopic") {
     Serial.print("Changing output to ");
     if(messageTemp == "true"){
       Serial.println("true");
-      digitalWrite(OUTPUT_1, HIGH);
     }
     else if(messageTemp == "false"){
       Serial.println("false");
-      digitalWrite(OUTPUT_1, LOW);
     }
   }
-  else if (String(topic) == "esp/output2") {
-    Serial.print("Changing output to ");
-    if(messageTemp == "true"){
-      Serial.println("true");
-      digitalWrite(OUTPUT_2, HIGH);
-    }
-    else if(messageTemp == "false"){
-      Serial.println("false");
-      digitalWrite(OUTPUT_2, LOW);
-    }
+  else {
+    Serial.println("no topic");
   }
 }
 
@@ -184,9 +167,6 @@ void setup() {
   digitalWrite(MODEM_RST, HIGH);
   digitalWrite(MODEM_POWER_ON, HIGH);
   
-  pinMode(OUTPUT_1, OUTPUT);
-  pinMode(OUTPUT_2, OUTPUT);
-  
   SerialMon.println("Wait...");
 
   // Set GSM module baud rate and UART pins
@@ -233,9 +213,9 @@ void loop() {
 //  while (ss.available() > 0)
   if (!mqtt.connected()) {
     SerialMon.println("=== MQTT NOT CONNECTED ===");
-    // Reconnect every 10 seconds
+    // Reconnect every 3 seconds
     uint32_t t = millis();
-    if (t - lastReconnectAttempt > 10000L) {
+    if (t - lastReconnectAttempt > 3000L) {
       lastReconnectAttempt = t;
       if (mqttConnect()) {
         lastReconnectAttempt = 0;
@@ -252,27 +232,25 @@ void loop() {
    SerialMon.println("Requesting current GSM location");
    if (modem.getGsmLocation(&lat, &lon))
     {
+      //send data evert 3s
      if (now - lastMsg > 3000) {
       lastMsg = now;
       
       SerialMon.println("=== MQTT CONNECTED ===");
       // Convert the value to a char array
-     String latString = String(lat, 8);
-     String longString = String(lon, 8);
+     String latString = String(lat, 20);
+     String longString = String(lon, 20);
      SerialMon.println(latString);
      SerialMon.println(longString);
 
-     StaticJsonDocument<256> doc;
-     doc["ID"] = "1";
-     JsonArray data = doc.createNestedArray("data");
-     data.add(latString);
-     data.add(longString);
-     
-     char local[128];
-     int b = serializeJson(doc, local);
-     Serial.print("bytes = ");
-     Serial.println(b,DEC);
-     
+     int boardID = 1;
+     String pipeline = "|";
+
+     String data_local = boardID + pipeline + latString + pipeline + longString;
+     SerialMon.println(data_local);
+
+     char local[50];
+     data_local.toCharArray(local, 50);
 
      mqtt.publish(GPStopic, local);
      //mqtt.loop();
