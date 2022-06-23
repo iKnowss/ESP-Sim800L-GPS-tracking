@@ -246,7 +246,7 @@ void loop() {
      int boardID = 1;
      String pipeline = "|";
 
-     String data_local = boardID + pipeline + latString + pipeline + longString;
+     String data_local = boardID + pipeline + longString + pipeline + latString;
      SerialMon.println(data_local);
 
      char local[50];
