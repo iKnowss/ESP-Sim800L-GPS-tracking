@@ -253,7 +253,7 @@ void loop() {
      data_local.toCharArray(local, 50);
 
      mqtt.publish(GPStopic, local);
-     //mqtt.loop();
+     mqtt.loop();
    }
      else {
       SerialMon.println("Couldn't get GSM location, retrying in 1s.");
