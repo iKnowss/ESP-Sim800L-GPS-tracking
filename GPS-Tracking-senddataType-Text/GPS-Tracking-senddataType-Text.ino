@@ -1,4 +1,4 @@
-//////////////////////////////////////gps
+//* import Sim lobrary
 #include <TinyGPS++.h>
 #include <HardwareSerial.h>
 
@@ -8,44 +8,43 @@
 #define TXPin (21)
 static const uint32_t GPSBaud = 9600;
 
-// The TinyGPS++ object
 TinyGPSPlus gps;
 
-// The serial connection to the GPS device
 HardwareSerial ss(2);
-//////////////////////////////////////
-// Select your modem:
-#define TINY_GSM_MODEM_SIM800 // Modem is SIM800L
+//? Select your modem sim:
+#define TINY_GSM_MODEM_SIM800 
 
-// Set serial for debug console (to the Serial Monitor, default speed 115200)
+//* Set serial for debug console (to the Serial Monitor, default speed 115200)
 #define SerialMon Serial
-// Set serial for AT commands
 #define SerialAT Serial1
-
-// Define the serial console for debug prints, if needed
 #define TINY_GSM_DEBUG SerialMon
-
 // set GSM PIN, if any
 #define GSM_PIN ""
 
-// Your GPRS credentials, if any
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//TODO: Set sim card 
 const char apn[] = "internet"; // APN (example: internet.vodafone.pt) use https://wiki.apnchanger.org
-const char gprsUser[] = "true";
-const char gprsPass[] = "true";
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// SIM card PIN (leave empty, if not defined)
-const char simPIN[]   = ""; 
+const char gprsUser[] = "true"; //? sim true
+const char gprsPass[] = "true"; //? sim true
 
-// MQTT details
-const char* broker = "mqtt.rfidpatient.com";                    // Public IP address or domain name
-const char* mqttUsername = "gpsclient";  // MQTT username
-const char* mqttPassword = "1q2w3e4r5t";  // MQTT password
+const char simPIN[]   = ""; // SIM card PIN (leave empty, if not defined)
 
+//TODO: Set detail MQTT broker
+const char* broker = "mqtt.rfidpatient.com";//! Public IP address or domain name
+const char* mqttUsername = "gpsclient";  //! MQTT username
+const char* mqttPassword = "1q2w3e4r5t";  //! MQTT password
+
+//TODO: set port MQTT
+#define MQTT_Port 1883
+
+//TODO: Set Topic MQTT
 const char* GPStopic = "gpstopic";
 
-// Define the serial console for debug prints, if needed
-//#define DUMP_AT_COMMANDS
+//TODO: time send data
+int time_send =  3000; //? send data every 3s
+
+//TODO: Set board ID
+int boardID = 1;
+
 
 #include <Wire.h>
 #include <TinyGsmClient.h>
@@ -60,6 +59,7 @@ const char* GPStopic = "gpstopic";
 
 #include <PubSubClient.h>
 
+//! set client
 TinyGsmClient client(modem);
 PubSubClient mqtt(client);
 
@@ -78,8 +78,6 @@ TwoWire I2CPower = TwoWire(0);
 
 #define IP5306_ADDR          0x75
 #define IP5306_REG_SYS_CTL0  0x00
-
-long lastMsg = 0;
 
 bool setPowerBoostKeepOn(int en){
   I2CPower.beginTransmission(IP5306_ADDR);
@@ -104,10 +102,7 @@ void mqttCallback(char* topic, byte* message, unsigned int len) {
   }
   Serial.println();
 
-  // Feel free to add more if statements to control more GPIOs with MQTT
-
-  // If a message is received on the topic esp/output1, you check if the message is either "true" or "false". 
-  // Changes the output state according to the message
+  //? If a message is received on the topic gpstopic, you check if the message is either "true" or "false". 
   if (String(topic) == "gpstopic") {
     Serial.print("Changing output to ");
     if(messageTemp == "true"){
@@ -126,10 +121,10 @@ boolean mqttConnect() {
   SerialMon.print("Connecting to ");
   SerialMon.print(broker);
 
-  // Connect to MQTT Broker without username and password
-  //boolean status = mqtt.connect("GsmClientN");
+  //? Connect to MQTT Broker without username and password
+  //* boolean status = mqtt.connect("GsmClientN");
 
-  // Or, if you want to authenticate MQTT:
+  //? if you want to authenticate MQTT:
   boolean status = mqtt.connect("GsmClientN", mqttUsername, mqttPassword);
 
   if (status == false) {
@@ -145,12 +140,10 @@ boolean mqttConnect() {
 
 
 void setup() {
-  ///set gps
+
   ss.begin(GPSBaud, SERIAL_8N1, RXPin, TXPin, false);
   Serial.println(TinyGPSPlus::libraryVersion());
-  /////////////////////////////////////////////////////////
   
-  // Set console baud rate
   SerialMon.begin(115200);
   
   I2CPower.begin(IP5306_REG_SYS_CTL0 ,I2C_SDA, I2C_SCL, 400000);
@@ -173,11 +166,8 @@ void setup() {
   SerialAT.begin(115200, SERIAL_8N1, MODEM_RX, MODEM_TX);
   delay(6000);
 
-  // Restart takes quite some time
-  // To skip it, call init() instead of restart()
   SerialMon.println("Initializing modem...");
   modem.restart();
-  // modem.init();
 
   String modemInfo = modem.getModemInfo();
   SerialMon.print("Modem Info: ");
@@ -187,7 +177,6 @@ void setup() {
   if ( GSM_PIN && modem.getSimStatus() != 3 ) {
     modem.simUnlock(GSM_PIN);
   }
-
 
   SerialMon.print("Connecting to APN: ");
   SerialMon.print(apn);
@@ -203,21 +192,20 @@ void setup() {
     SerialMon.println("GPRS connected");
   }
   
-  // MQTT Broker setup
-  mqtt.setServer(broker, 1883);
+  //MQTT Broker setup
+  mqtt.setServer(broker, MQTT_Port);
   mqtt.setCallback(mqttCallback);
 }
 
 void loop() {
-  {
-//  while (ss.available() > 0)
+
   if (!mqtt.connected()) {
     SerialMon.println("=== MQTT NOT CONNECTED ===");
     // Reconnect every 3 seconds
     uint32_t t = millis();
     if (t - lastReconnectAttempt > 3000L) {
       lastReconnectAttempt = t;
-      if (mqttConnect()) {
+      if (mqttConnect()) { //! reconnect
         lastReconnectAttempt = 0;
       }
     }
@@ -225,41 +213,43 @@ void loop() {
     return;
   }
   else{
-    float lat = 0;
-    float lon = 0;
-    
-   long now = millis();
+
+  float lat = 0; //! long
+  float lon = 0; //! lat
+
+  long lastMsg = 0;
+  long now = millis();
+
    SerialMon.println("Requesting current GSM location");
    if (modem.getGsmLocation(&lat, &lon))
     {
-      //send data evert 3s
-     if (now - lastMsg > 3000) {
-      lastMsg = now;
-      
-      SerialMon.println("=== MQTT CONNECTED ===");
-      // Convert the value to a char array
-     String latString = String(lat, 20);
-     String longString = String(lon, 20);
-     SerialMon.println(latString);
-     SerialMon.println(longString);
+      // send data evert 3s
+      if (now - lastMsg > time_send) {
+        lastMsg = now;
+        
+        SerialMon.println("=== MQTT CONNECTED ===");
+        // Convert the value to a char array
+        String latString = String(lat, 20);
+        String longString = String(lon, 20);
+        SerialMon.println(latString);
+        SerialMon.println(longString);
 
-     int boardID = 1;
-     String pipeline = "|";
+        String pipeline = "|";
 
-     String data_local = boardID + pipeline + longString + pipeline + latString;
-     SerialMon.println(data_local);
+        //! fomat data for send
+        String data_local = boardID + pipeline + longString + pipeline + latString; //! example DATA: 1|100.13|13.33
+        SerialMon.println(data_local);
 
-     char local[50];
-     data_local.toCharArray(local, 50);
+        char local[50];
+        data_local.toCharArray(local, 50);
 
-     mqtt.publish(GPStopic, local);
-     mqtt.loop();
-   }
-     else {
-      SerialMon.println("Couldn't get GSM location, retrying in 1s.");
-      delay(1000L);
+        //! send data to MQTT topic GPStopic
+        mqtt.publish(GPStopic, local);
+        mqtt.loop();
+        }
+      else{
+        ;
         }
       }
     }
-  }
 }
